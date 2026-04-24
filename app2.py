@@ -9,7 +9,7 @@ st.title("🚀 AI Resume Analyzer")
 st.write("Upload your resume and get job recommendations instantly")
 
 # ---------- FILE UPLOAD ----------
-uploaded_file = st.file_uploader("📄 Upload your Resume (PDF)", type="pdf")
+uploaded_file = st.file_uploader("📄 Upload  Resume (PDF)", type="pdf")
 
 if uploaded_file is not None:
     st.success("File uploaded successfully ✅")
