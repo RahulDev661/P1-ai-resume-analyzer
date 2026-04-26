@@ -2,62 +2,99 @@ import streamlit as st
 import pandas as pd
 import fitz  # PyMuPDF
 
-# ---------- PAGE SETTINGS ----------
-st.set_page_config(page_title="Resume Analyzer", layout="centered")
+# ---------- PAGE CONFIG ----------
+st.set_page_config(page_title="AI Resume Analyzer", page_icon="🚀", layout="wide")
 
-st.title("🚀 AI Resume Analyzer")
-st.write("Upload your resume and get job recommendations instantly")
+# ---------- CUSTOM CSS ----------
+st.markdown("""
+<style>
+.main {
+    background-color: #0f172a;
+    color: white;
+}
+.stButton>button {
+    background-color: #4f46e5;
+    color: white;
+    border-radius: 10px;
+    height: 3em;
+    width: 100%;
+}
+.card {
+    background-color: #1e293b;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------- HEADER ----------
+st.markdown("""
+<h1 style='text-align: center;'>🚀 AI Resume Analyzer</h1>
+<p style='text-align: center;'>Upload your resume and get smart job recommendations</p>
+""", unsafe_allow_html=True)
+
+# ---------- LAYOUT ----------
+col1, col2 = st.columns([1, 2])
 
 # ---------- FILE UPLOAD ----------
-uploaded_file = st.file_uploader("📄 Upload  Resume (PDF)", type="pdf")
+with col1:
+    st.markdown("### 📄 Upload Resume")
+    uploaded_file = st.file_uploader("Upload PDF", type="pdf")
 
-if uploaded_file is not None:
-    st.success("File uploaded successfully ✅")
+# ---------- MAIN OUTPUT ----------
+with col2:
+    if uploaded_file is not None:
+        st.success("File uploaded successfully ✅")
 
-    try:
-        # ---------- EXTRACT TEXT ----------
-        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        
-        resume_text = ""
-        for page in doc:
-            resume_text += page.get_text()
+        try:
+            # ---------- EXTRACT TEXT ----------
+            doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+            resume_text = "".join(page.get_text() for page in doc).lower()
 
-        resume_text = resume_text.lower()
+            # ---------- PREVIEW ----------
+            st.markdown("### 📄 Resume Preview")
+            st.markdown(f"<div class='card'>{resume_text[:500]}...</div>", unsafe_allow_html=True)
 
-        # ---------- SHOW TEXT ----------
-        st.subheader("📄 Extracted Text (Preview)")
-        st.write(resume_text[:500])
+            # ---------- SKILLS DETECTION ----------
+            skills = ["python", "sql", "html", "css", "machine learning", "excel", "javascript", "react"]
+            found_skills = [skill for skill in skills if skill in resume_text]
 
-        # ---------- SKILLS DETECTION ----------
-        skills = ["python", "sql", "html", "css", "machine learning", "excel", "javascript", "react"]
+            st.markdown("### 🧠 Skills Detected")
+            if found_skills:
+                skill_cols = st.columns(len(found_skills))
+                for i, skill in enumerate(found_skills):
+                    skill_cols[i].success(skill.upper())
+            else:
+                st.warning("No common skills detected")
 
-        found_skills = [skill for skill in skills if skill in resume_text]
+            # ---------- LOAD JOB DATA ----------
+            df = pd.read_csv("jobs.csv")
 
-        st.subheader("🧠 Skills Found")
-        if found_skills:
-            st.write(found_skills)
-        else:
-            st.write("No common skills detected")
+            # ---------- JOB MATCHING ----------
+            st.markdown("### 💼 Job Matches")
 
-        # ---------- LOAD JOB DATA ----------
-        df = pd.read_csv("jobs.csv")
+            matches = []
+            for _, row in df.iterrows():
+                job_desc = row["description"].lower()
+                score = sum(skill in resume_text for skill in job_desc.split())
+                if score > 0:
+                    matches.append((row['title'], score))
 
-        # ---------- JOB MATCHING WITH SCORE ----------
-        st.subheader("💼 Matched Jobs")
+            if matches:
+                matches = sorted(matches, key=lambda x: x[1], reverse=True)
+                for title, score in matches:
+                    st.markdown(f"""
+                    <div class='card'>
+                        <h4>✅ {title}</h4>
+                        <p>Match Score: <b>{score}</b></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.error("❌ No matching jobs found")
 
-        found = False
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.info("⬅️ Upload a resume to get started")
 
-        for index, row in df.iterrows():
-            job_desc = row["description"].lower()
-
-            score = sum(skill in resume_text for skill in job_desc.split())
-
-            if score > 0:
-                st.write(f"✅ {row['title']} (Match Score: {score})")
-                found = True
-
-        if not found:
-            st.warning("❌ No matching jobs found")
-
-    except Exception as e:
-        st.error(f"Error: {e}")
